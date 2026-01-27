@@ -22,7 +22,10 @@ export interface ValidationResult {
 // Branch Validation
 // ============================================================================
 
-export function validateBranch(refName: string, config: RepoConfig): ValidationResult {
+export function validateBranch(
+  refName: string,
+  config: RepoConfig,
+): ValidationResult {
   // Only validate branch refs
   if (!refName.startsWith("refs/heads/")) {
     return {
@@ -176,7 +179,9 @@ async function validateProtectedPaths(
     };
   }
 
-  log.debug(`Files changed in push: ${diffResult.stdout.trim().split("\n").join(", ")}`);
+  log.debug(
+    `Files changed in push: ${diffResult.stdout.trim().split("\n").join(", ")}`,
+  );
 
   return checkChangedFiles(diffResult.stdout, config.protected_paths);
 }
@@ -252,35 +257,37 @@ async function checkUpstreamDivergence(
 // Push to Upstream
 // ============================================================================
 
-async function pushToUpstream(
-  update: RefUpdate,
+async function pushMultipleToUpstream(
+  validatedUpdates: Array<{ update: RefUpdate; isForcePush: boolean }>,
   repoPath: string,
   sshEnv: Record<string, string>,
-  forcePush: boolean = false,
 ): Promise<ValidationResult> {
-  const branchName = update.refName.replace(/^refs\/heads\//, "");
+  const args = ["push", "origin"];
 
-  let args: string[];
-  if (update.newSha === ZERO_SHA) {
-    // Branch deletion
-    args = ["push", "origin", "--delete", branchName];
-  } else if (forcePush) {
-    // Force push - need --force flag
-    args = [
-      "push",
-      "--force",
-      "origin",
-      `${update.newSha}:refs/heads/${branchName}`,
-    ];
-  } else {
-    // Normal push
-    args = ["push", "origin", `${update.newSha}:refs/heads/${branchName}`];
+  // Check if any update requires force push
+  const requiresForce = validatedUpdates.some(({ isForcePush }) => isForcePush);
+  if (requiresForce) {
+    args.push("--force");
+  }
+
+  // Add all refspecs
+  for (const { update } of validatedUpdates) {
+    const branchName = update.refName.replace(/^refs\/heads\//, "");
+
+    if (update.newSha === ZERO_SHA) {
+      // Branch deletion
+      args.push(`:refs/heads/${branchName}`);
+    } else {
+      // Normal push or force push
+      args.push(`${update.newSha}:refs/heads/${branchName}`);
+    }
   }
 
   log.info(`Pushing to upstream: git ${args.join(" ")}`);
 
   // We need to unset GIT_QUARANTINE_PATH to allow pushing from within pre-receive hook
   // Create a clean copy of process.env without quarantine variables, then add sshEnv
+
   const cleanEnv: Record<string, string> = {};
   for (const [key, value] of Object.entries(process.env)) {
     // Skip quarantine-related variables that prevent pushing from pre-receive
@@ -289,7 +296,6 @@ async function pushToUpstream(
       cleanEnv[key] = value;
     }
   }
-  // Add SSH configuration
   Object.assign(cleanEnv, sshEnv);
 
   const result = await git(args, {
@@ -305,7 +311,7 @@ async function pushToUpstream(
     };
   }
 
-  return { allowed: true, message: "Successfully pushed to upstream" };
+  return { allowed: true, message: "Successfully pushed all refs to upstream" };
 }
 
 // ============================================================================
@@ -325,7 +331,8 @@ export async function validateAndPush(
   const errors: string[] = [];
 
   // First pass: validate all updates before pushing anything
-  const validatedUpdates: Array<{ update: RefUpdate; isForcePush: boolean }> = [];
+  const validatedUpdates: Array<{ update: RefUpdate; isForcePush: boolean }> =
+    [];
 
   for (const update of updates) {
     log.info(
@@ -385,22 +392,29 @@ export async function validateAndPush(
     };
   }
 
-  // Second pass: push all validated updates to upstream
-  for (const { update, isForcePush } of validatedUpdates) {
-    const pushResult = await pushToUpstream(
-      update,
-      ctx.repoPath,
-      ctx.sshEnv,
-      isForcePush,
-    );
-    if (!pushResult.allowed) {
-      return {
-        allowed: false,
-        message: formatRejectionMessage([pushResult.message]),
-      };
-    }
+  // Sanity check: we should have validated updates if no errors occurred
+  if (validatedUpdates.length === 0) {
+    return {
+      allowed: false,
+      message: formatRejectionMessage([
+        "Internal error: No updates to push but no validation errors either.",
+        `Original updates count: ${updates.length}`,
+        "This should not happen - please report this issue.",
+      ]),
+    };
+  }
 
-    log.info(`Successfully validated and pushed ${update.refName}`);
+  // Second pass: push all validated updates to upstream in a single command
+  const pushResult = await pushMultipleToUpstream(
+    validatedUpdates,
+    ctx.repoPath,
+    ctx.sshEnv,
+  );
+  if (!pushResult.allowed) {
+    return {
+      allowed: false,
+      message: formatRejectionMessage([pushResult.message]),
+    };
   }
 
   return {

@@ -298,6 +298,9 @@ describe("Git Proxy Integration Tests", () => {
     // Get the current HEAD sha before making changes
     const oldSha = await getHeadShortSha(env.clientPath);
 
+    // Get upstream's main HEAD before the push attempt
+    const upstreamMainBefore = await getHeadShortSha(env.upstreamPath, "main");
+
     // Try to push to main (not in allowed list)
     writeFileSync(join(env.clientPath, "hack.txt"), "malicious content\n");
     await git(["add", "hack.txt"], { cwd: env.clientPath });
@@ -331,6 +334,10 @@ describe("Git Proxy Integration Tests", () => {
       error: failed to push some refs to 'http://localhost:<PORT>/testproject.git'
       "
     `);
+
+    // Verify upstream was NOT modified
+    const upstreamMainAfter = await getHeadShortSha(env.upstreamPath, "main");
+    expect(upstreamMainAfter).toBe(upstreamMainBefore);
   });
 
   test("push modifying protected paths fails", async () => {
@@ -405,6 +412,13 @@ describe("Git Proxy Integration Tests", () => {
       error: failed to push some refs to 'http://localhost:<PORT>/testproject.git'
       "
     `);
+
+    // Verify the branch was NOT created in upstream
+    const branchCheck = await git(
+      ["rev-parse", "--verify", "agent/sneaky"],
+      { cwd: env.upstreamPath },
+    );
+    expect(branchCheck.success).toBe(false);
   });
 
   test("push modifying protected paths then reverting succeeds", async () => {
@@ -481,6 +495,13 @@ describe("Git Proxy Integration Tests", () => {
         "
       `);
 
+    // Verify the branch was NOT created in upstream after rejection
+    const branchCheckAfterRejection = await git(
+      ["rev-parse", "--verify", "agent/revert-test"],
+      { cwd: env.upstreamPath },
+    );
+    expect(branchCheckAfterRejection.success).toBe(false);
+
     // Second commit: revert the change back to original
     writeFileSync(
       join(env.clientPath, ".github", "workflows", "ci.yml"),
@@ -502,7 +523,7 @@ describe("Git Proxy Integration Tests", () => {
 
     expect(secondPushResult.success).toBe(true);
 
-    // Verify the branch exists in upstream
+    // Verify the branch exists in upstream after successful push
     const refsResult = await git(
       ["for-each-ref", "--format=%(refname)", "refs/heads/agent/revert-test"],
       { cwd: env.upstreamPath },
@@ -542,6 +563,7 @@ describe("Git Proxy Integration Tests", () => {
 
     // Get the old SHA (what's on remote, i.e., second commit)
     const oldSha = await getHeadShortSha(env.clientPath);
+    const upstreamBranchBefore = await getHeadShortSha(env.upstreamPath, "agent/force-test");
 
     // Now reset back to first commit (removes second commit)
     await git(["reset", "--hard", "HEAD~1"], { cwd: env.clientPath });
@@ -585,6 +607,10 @@ describe("Git Proxy Integration Tests", () => {
       error: failed to push some refs to 'http://localhost:<PORT>/testproject.git'
       "
     `);
+
+    // Verify upstream was NOT modified (should still be at the old commit)
+    const upstreamBranchAfter = await getHeadShortSha(env.upstreamPath, "agent/force-test");
+    expect(upstreamBranchAfter).toBe(upstreamBranchBefore);
   });
 
   test("force push is allowed when configured", async () => {
@@ -726,6 +752,9 @@ describe("Git Proxy Integration Tests", () => {
 
     // Push to blocked branch should fail
     await git(["checkout", "main"], { cwd: env.clientPath });
+    
+    const upstreamMainBefore = await getHeadShortSha(env.upstreamPath, "main");
+    
     writeFileSync(join(env.clientPath, "main-change.txt"), "Change on main\n");
     await git(["add", "main-change.txt"], { cwd: env.clientPath });
     await git(["commit", "-m", "Change main"], { cwd: env.clientPath });
@@ -758,6 +787,10 @@ describe("Git Proxy Integration Tests", () => {
       error: failed to push some refs to 'http://localhost:<PORT>/testproject.git'
       "
     `);
+
+    // Verify upstream main was NOT modified
+    const upstreamMainAfter = await getHeadShortSha(env.upstreamPath, "main");
+    expect(upstreamMainAfter).toBe(upstreamMainBefore);
   });
 
   test("proxy fetches upstream changes before serving", async () => {
@@ -898,5 +931,9 @@ describe("Git Proxy Integration Tests", () => {
       error: failed to push some refs to 'http://localhost:<PORT>/testproject.git'
       "
     `);
+
+    // Verify the tag was NOT created in upstream
+    const tagCheck = await git(["tag", "-l", "v1.0"], { cwd: env.upstreamPath });
+    expect(tagCheck.stdout.trim()).toBe("");
   });
 });
