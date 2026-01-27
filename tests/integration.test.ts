@@ -414,10 +414,9 @@ describe("Git Proxy Integration Tests", () => {
     `);
 
     // Verify the branch was NOT created in upstream
-    const branchCheck = await git(
-      ["rev-parse", "--verify", "agent/sneaky"],
-      { cwd: env.upstreamPath },
-    );
+    const branchCheck = await git(["rev-parse", "--verify", "agent/sneaky"], {
+      cwd: env.upstreamPath,
+    });
     expect(branchCheck.success).toBe(false);
   });
 
@@ -441,10 +440,10 @@ describe("Git Proxy Integration Tests", () => {
     mkdirSync(join(env.clientPath, ".github", "workflows"), {
       recursive: true,
     });
-    
+
     // Save original content
     const originalContent = "name: CI\n";
-    
+
     // First commit: modify protected file
     writeFileSync(
       join(env.clientPath, ".github", "workflows", "ci.yml"),
@@ -466,8 +465,9 @@ describe("Git Proxy Integration Tests", () => {
       stdout: "",
       success: false,
     });
-    expect(normalizeOutput({ output: firstStderr, oldSha, newSha, port: env.port }))
-      .toMatchInlineSnapshot(`
+    expect(
+      normalizeOutput({ output: firstStderr, oldSha, newSha, port: env.port }),
+    ).toMatchInlineSnapshot(`
         "remote: [WARN] No SSH key configured. Upstream push may fail for private repos.        
         remote: [INFO] Validating: refs/heads/agent/revert-test 00000000..<NEW_SHA>        
         remote: [DEBUG] git rev-parse --verify origin/main {        
@@ -508,7 +508,9 @@ describe("Git Proxy Integration Tests", () => {
       originalContent,
     );
     await git(["add", ".github/workflows/ci.yml"], { cwd: env.clientPath });
-    await git(["commit", "-m", "Revert CI workflow change"], { cwd: env.clientPath });
+    await git(["commit", "-m", "Revert CI workflow change"], {
+      cwd: env.clientPath,
+    });
 
     // Also add a non-protected file so we have actual changes
     writeFileSync(join(env.clientPath, "newfile.txt"), "New file content\n");
@@ -563,7 +565,10 @@ describe("Git Proxy Integration Tests", () => {
 
     // Get the old SHA (what's on remote, i.e., second commit)
     const oldSha = await getHeadShortSha(env.clientPath);
-    const upstreamBranchBefore = await getHeadShortSha(env.upstreamPath, "agent/force-test");
+    const upstreamBranchBefore = await getHeadShortSha(
+      env.upstreamPath,
+      "agent/force-test",
+    );
 
     // Now reset back to first commit (removes second commit)
     await git(["reset", "--hard", "HEAD~1"], { cwd: env.clientPath });
@@ -609,7 +614,10 @@ describe("Git Proxy Integration Tests", () => {
     `);
 
     // Verify upstream was NOT modified (should still be at the old commit)
-    const upstreamBranchAfter = await getHeadShortSha(env.upstreamPath, "agent/force-test");
+    const upstreamBranchAfter = await getHeadShortSha(
+      env.upstreamPath,
+      "agent/force-test",
+    );
     expect(upstreamBranchAfter).toBe(upstreamBranchBefore);
   });
 
@@ -752,9 +760,9 @@ describe("Git Proxy Integration Tests", () => {
 
     // Push to blocked branch should fail
     await git(["checkout", "main"], { cwd: env.clientPath });
-    
+
     const upstreamMainBefore = await getHeadShortSha(env.upstreamPath, "main");
-    
+
     writeFileSync(join(env.clientPath, "main-change.txt"), "Change on main\n");
     await git(["add", "main-change.txt"], { cwd: env.clientPath });
     await git(["commit", "-m", "Change main"], { cwd: env.clientPath });
@@ -933,7 +941,9 @@ describe("Git Proxy Integration Tests", () => {
     `);
 
     // Verify the tag was NOT created in upstream
-    const tagCheck = await git(["tag", "-l", "v1.0"], { cwd: env.upstreamPath });
+    const tagCheck = await git(["tag", "-l", "v1.0"], {
+      cwd: env.upstreamPath,
+    });
     expect(tagCheck.stdout.trim()).toBe("");
   });
 });
