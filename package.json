@@ -12,6 +12,7 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
-    "@types/bun": "^1.2.4"
+    "@types/bun": "^1.2.4",
+    "@typescript/native-preview": "^7.0.0-dev.20260127.1"
   }
 }
