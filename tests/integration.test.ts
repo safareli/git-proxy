@@ -274,10 +274,10 @@ describe("Git Proxy Integration Tests", () => {
       { cwd: env.upstreamPath },
     );
     expect(refsResult.stdout).toMatchInlineSnapshot(`
-      "refs/heads/agent/test-feature
-      refs/heads/main
-      "
-    `);
+        "refs/heads/agent/test-feature
+        refs/heads/main
+        "
+      `);
   });
 
   test("push to blocked branch fails", async () => {
@@ -308,18 +308,22 @@ describe("Git Proxy Integration Tests", () => {
 
     // Get the new HEAD sha after commit
     const newSha = await getHeadShortSha(env.clientPath);
+    for (const forceArgs of [[], ["--force", "-f"]]) {
+      const { stderr, ...rest } = await git(
+        ["push", "origin", "main", ...forceArgs],
+        {
+          cwd: env.clientPath,
+        },
+      );
 
-    const { stderr, ...rest } = await git(["push", "origin", "main"], {
-      cwd: env.clientPath,
-    });
-
-    expect(rest).toEqual({
-      exitCode: 1,
-      stdout: "",
-      success: false,
-    });
-    expect(normalizeOutput({ output: stderr, oldSha, newSha, port: env.port }))
-      .toMatchInlineSnapshot(`
+      expect(rest).toEqual({
+        exitCode: 1,
+        stdout: "",
+        success: false,
+      });
+      expect(
+        normalizeOutput({ output: stderr, oldSha, newSha, port: env.port }),
+      ).toMatchInlineSnapshot(`
       "remote: [WARN] No SSH key configured. Upstream push may fail for private repos.        
       remote: [INFO] Validating: refs/heads/main <OLD_SHA>..<NEW_SHA>        
       remote: 
@@ -335,9 +339,10 @@ describe("Git Proxy Integration Tests", () => {
       "
     `);
 
-    // Verify upstream was NOT modified
-    const upstreamMainAfter = await getHeadShortSha(env.upstreamPath, "main");
-    expect(upstreamMainAfter).toBe(upstreamMainBefore);
+      // Verify upstream was NOT modified
+      const upstreamMainAfter = await getHeadShortSha(env.upstreamPath, "main");
+      expect(upstreamMainAfter).toBe(upstreamMainBefore);
+    }
   });
 
   test("push modifying protected paths fails", async () => {
@@ -372,20 +377,22 @@ describe("Git Proxy Integration Tests", () => {
 
     const newSha = await getHeadShortSha(env.clientPath);
 
-    const { stderr, ...rest } = await git(
-      ["push", "-u", "origin", "agent/sneaky"],
-      {
-        cwd: env.clientPath,
-      },
-    );
+    for (const forceArgs of [[], ["--force", "-f"]]) {
+      const { stderr, ...rest } = await git(
+        ["push", "-u", "origin", "agent/sneaky", ...forceArgs],
+        {
+          cwd: env.clientPath,
+        },
+      );
 
-    expect(rest).toEqual({
-      exitCode: 1,
-      stdout: "",
-      success: false,
-    });
-    expect(normalizeOutput({ output: stderr, oldSha, newSha, port: env.port }))
-      .toMatchInlineSnapshot(`
+      expect(rest).toEqual({
+        exitCode: 1,
+        stdout: "",
+        success: false,
+      });
+      expect(
+        normalizeOutput({ output: stderr, oldSha, newSha, port: env.port }),
+      ).toMatchInlineSnapshot(`
       "remote: [WARN] No SSH key configured. Upstream push may fail for private repos.        
       remote: [INFO] Validating: refs/heads/agent/sneaky 00000000..<NEW_SHA>        
       remote: [DEBUG] git rev-parse --verify origin/main {        
@@ -413,11 +420,12 @@ describe("Git Proxy Integration Tests", () => {
       "
     `);
 
-    // Verify the branch was NOT created in upstream
-    const branchCheck = await git(["rev-parse", "--verify", "agent/sneaky"], {
-      cwd: env.upstreamPath,
-    });
-    expect(branchCheck.success).toBe(false);
+      // Verify the branch was NOT created in upstream
+      const branchCheck = await git(["rev-parse", "--verify", "agent/sneaky"], {
+        cwd: env.upstreamPath,
+      });
+      expect(branchCheck.success).toBe(false);
+    }
   });
 
   test("push modifying protected paths then reverting succeeds", async () => {
@@ -456,18 +464,24 @@ describe("Git Proxy Integration Tests", () => {
     const oldSha = await getHeadShortSha(env.clientPath, "HEAD~1");
     const newSha = await getHeadShortSha(env.clientPath);
 
-    const { stderr: firstStderr, ...firstRest } = await git(
-      ["push", "-u", "origin", "agent/revert-test"],
-      { cwd: env.clientPath },
-    );
-    expect(firstRest).toEqual({
-      exitCode: 1,
-      stdout: "",
-      success: false,
-    });
-    expect(
-      normalizeOutput({ output: firstStderr, oldSha, newSha, port: env.port }),
-    ).toMatchInlineSnapshot(`
+    for (const forceArgs of [[], ["--force", "-f"]]) {
+      const { stderr: firstStderr, ...firstRest } = await git(
+        ["push", "-u", "origin", "agent/revert-test", ...forceArgs],
+        { cwd: env.clientPath },
+      );
+      expect(firstRest).toEqual({
+        exitCode: 1,
+        stdout: "",
+        success: false,
+      });
+      expect(
+        normalizeOutput({
+          output: firstStderr,
+          oldSha,
+          newSha,
+          port: env.port,
+        }),
+      ).toMatchInlineSnapshot(`
         "remote: [WARN] No SSH key configured. Upstream push may fail for private repos.        
         remote: [INFO] Validating: refs/heads/agent/revert-test 00000000..<NEW_SHA>        
         remote: [DEBUG] git rev-parse --verify origin/main {        
@@ -495,12 +509,13 @@ describe("Git Proxy Integration Tests", () => {
         "
       `);
 
-    // Verify the branch was NOT created in upstream after rejection
-    const branchCheckAfterRejection = await git(
-      ["rev-parse", "--verify", "agent/revert-test"],
-      { cwd: env.upstreamPath },
-    );
-    expect(branchCheckAfterRejection.success).toBe(false);
+      // Verify the branch was NOT created in upstream after rejection
+      const branchCheckAfterRejection = await git(
+        ["rev-parse", "--verify", "agent/revert-test"],
+        { cwd: env.upstreamPath },
+      );
+      expect(branchCheckAfterRejection.success).toBe(false);
+    }
 
     // Second commit: revert the change back to original
     writeFileSync(
@@ -770,17 +785,22 @@ describe("Git Proxy Integration Tests", () => {
     const oldSha = await getHeadShortSha(env.clientPath, "HEAD~1");
     const newSha = await getHeadShortSha(env.clientPath);
 
-    const { stderr, ...rest } = await git(["push", "origin", "main"], {
-      cwd: env.clientPath,
-    });
+    for (const forceArgs of [[], ["--force", "-f"]]) {
+      const { stderr, ...rest } = await git(
+        ["push", "origin", "main", ...forceArgs],
+        {
+          cwd: env.clientPath,
+        },
+      );
 
-    expect(rest).toEqual({
-      exitCode: 1,
-      stdout: "",
-      success: false,
-    });
-    expect(normalizeOutput({ output: stderr, oldSha, newSha, port: env.port }))
-      .toMatchInlineSnapshot(`
+      expect(rest).toEqual({
+        exitCode: 1,
+        stdout: "",
+        success: false,
+      });
+      expect(
+        normalizeOutput({ output: stderr, oldSha, newSha, port: env.port }),
+      ).toMatchInlineSnapshot(`
       "remote: [WARN] No SSH key configured. Upstream push may fail for private repos.        
       remote: [INFO] Validating: refs/heads/main <OLD_SHA>..<NEW_SHA>        
       remote: 
@@ -796,9 +816,10 @@ describe("Git Proxy Integration Tests", () => {
       "
     `);
 
-    // Verify upstream main was NOT modified
-    const upstreamMainAfter = await getHeadShortSha(env.upstreamPath, "main");
-    expect(upstreamMainAfter).toBe(upstreamMainBefore);
+      // Verify upstream main was NOT modified
+      const upstreamMainAfter = await getHeadShortSha(env.upstreamPath, "main");
+      expect(upstreamMainAfter).toBe(upstreamMainBefore);
+    }
   });
 
   test("proxy fetches upstream changes before serving", async () => {
@@ -900,6 +921,7 @@ describe("Git Proxy Integration Tests", () => {
     await git(["commit", "-m", "Release v1.0"], { cwd: env.clientPath });
 
     // Push the branch (should succeed)
+
     const branchPush = await git(["push", "-u", "origin", "agent/tagging"], {
       cwd: env.clientPath,
     });
@@ -913,18 +935,22 @@ describe("Git Proxy Integration Tests", () => {
     // Get the SHA of the tag object (not the commit it points to)
     const newSha = await getHeadShortSha(env.clientPath, "v1.0", 8);
 
-    // Try to push the tag (should fail)
-    const { stderr, ...rest } = await git(["push", "origin", "v1.0"], {
-      cwd: env.clientPath,
-    });
+    // Try to push the tag (should fail even with force)
+    for (const forceArgs of [[], ["--force", "-f"]]) {
+      const { stderr, ...rest } = await git(
+        ["push", "origin", "v1.0", ...forceArgs],
+        {
+          cwd: env.clientPath,
+        },
+      );
 
-    expect(rest).toEqual({
-      exitCode: 1,
-      stdout: "",
-      success: false,
-    });
-    expect(normalizeOutput({ output: stderr, newSha, port: env.port }))
-      .toMatchInlineSnapshot(`
+      expect(rest).toEqual({
+        exitCode: 1,
+        stdout: "",
+        success: false,
+      });
+      expect(normalizeOutput({ output: stderr, newSha, port: env.port }))
+        .toMatchInlineSnapshot(`
       "remote: [WARN] No SSH key configured. Upstream push may fail for private repos.        
       remote: [INFO] Validating: refs/tags/v1.0 00000000..<NEW_SHA>        
       remote: 
@@ -940,10 +966,11 @@ describe("Git Proxy Integration Tests", () => {
       "
     `);
 
-    // Verify the tag was NOT created in upstream
-    const tagCheck = await git(["tag", "-l", "v1.0"], {
-      cwd: env.upstreamPath,
-    });
-    expect(tagCheck.stdout.trim()).toBe("");
+      // Verify the tag was NOT created in upstream
+      const tagCheck = await git(["tag", "-l", "v1.0"], {
+        cwd: env.upstreamPath,
+      });
+      expect(tagCheck.stdout.trim()).toBe("");
+    }
   });
 });
