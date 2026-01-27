@@ -1,0 +1,17 @@
+{
+  "name": "git-proxy",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "bun run --watch src/index.ts",
+    "build": "bun build --compile --outfile git-proxy ./src/index.ts",
+    "typecheck": "tsgo",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.2.4"
+  }
+}

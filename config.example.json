@@ -1,0 +1,32 @@
+{
+  "repos": {
+    "myproject": {
+      "upstream": "git@github.com:user/myproject.git",
+      "protected_paths": [
+        ".github/**",
+        "*.nix",
+        "nix/",
+        "Makefile"
+      ],
+      "allowed_branches": [
+        "agent/*",
+        "ai/*",
+        "feature/*"
+      ],
+      "force_push": "deny",
+      "base_branch": "main"
+    },
+    "another-repo": {
+      "upstream": "git@github.com:user/another.git",
+      "protected_paths": [
+        ".github/workflows/**"
+      ],
+      "blocked_branches": [
+        "main",
+        "master"
+      ],
+      "force_push": "allow",
+      "base_branch": "main"
+    }
+  }
+}

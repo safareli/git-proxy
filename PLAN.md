@@ -147,9 +147,6 @@ Note: JSON doesn't support comments, but they're shown above for documentation. 
 │   ├── hooks.ts            # Pre-receive hook logic (runs in same process)
 │   └── utils.ts            # Helpers (locking, git commands, glob matching)
 │
-├── scripts/
-│   └── build.sh            # Build single binary
-│
 ├── Dockerfile              # Container build (minimal: just git + binary)
 ├── docker-compose.yaml     # Example deployment
 │
@@ -377,19 +374,19 @@ secrets:
 ## Implementation Phases
 
 ### Phase 1: Core Functionality
-- [ ] Project setup (package.json, tsconfig.json)
-- [ ] Config parsing - JSON (`src/config.ts`)
-- [ ] HTTP server with git-http-backend proxy (`src/server.ts`, `src/git-backend.ts`)
-- [ ] Basic pre-receive hook (branch validation only)
-- [ ] Repo initialization on startup
-- [ ] Manual testing
+- [x] Project setup (package.json, tsconfig.json)
+- [x] Config parsing - JSON (`src/config.ts`)
+- [x] HTTP server with git-http-backend proxy (`src/server.ts`, `src/git-backend.ts`)
+- [x] Basic pre-receive hook (branch validation only)
+- [x] Repo initialization on startup
+- [x] Manual testing
 
 ### Phase 2: Full Validation
-- [ ] Protected path validation in pre-receive
-- [ ] Force push detection
-- [ ] Upstream divergence check
-- [ ] Synchronous push to GitHub
-- [ ] Error messages to agent
+- [x] Protected path validation in pre-receive
+- [x] Force push detection
+- [x] Upstream divergence check
+- [x] Synchronous push to GitHub
+- [x] Error messages to agent
 
 ### Phase 3: Packaging
 - [ ] Build script (`bun build --compile`)
