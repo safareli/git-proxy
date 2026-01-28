@@ -91,15 +91,17 @@ async function installPreReceiveHook(repoPath: string, repoName: string): Promis
   }
 
   // Get the path to our binary/script
+  // Use process.execPath for compiled binaries (gives the actual executable path)
+  // For development (.ts files), use process.argv[1] which points to the script
   const selfPath = process.argv[1] ?? Bun.main;
+  const isTypeScript = selfPath.endsWith('.ts');
   
   // Determine how to invoke the script
-  // If it's a .ts file, we need to use bun to run it
-  // If it's a compiled binary, we can execute it directly
-  const isTypeScript = selfPath.endsWith('.ts');
+  // For compiled binaries, use process.execPath (the actual path like /usr/local/bin/git-proxy)
+  // For .ts files in dev, use bun run with the script path
   const execCommand = isTypeScript 
     ? `bun run "${selfPath}"` 
-    : `"${selfPath}"`;
+    : `"${process.execPath}"`;
 
   // Create hook script that calls our pre-receive subcommand
   const hookScript = `#!/bin/sh
