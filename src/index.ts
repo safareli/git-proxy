@@ -72,8 +72,7 @@ async function initializeRepo(
   });
 
   if (!fetchResult.success) {
-    log.warn(`Initial fetch failed for ${repoName}: ${fetchResult.stderr}`);
-    log.warn("The repo will be fetched on first request.");
+    throw new Error(`Initial fetch failed for ${repoName}: ${fetchResult.stderr}`);
   }
 }
 
