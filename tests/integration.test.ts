@@ -32,7 +32,7 @@ const normalizeOutput = (_: {
   output: string;
   oldSha?: string;
   newSha?: string;
-  port?: number;
+  env: TestEnv;
 }): string => {
   let result = _.output;
   if (_.oldSha) {
@@ -41,14 +41,13 @@ const normalizeOutput = (_: {
   if (_.newSha) {
     result = result.replace(new RegExp(_.newSha, "g"), "<NEW_SHA>");
   }
-  if (_.port) {
-    result = result.replace(
-      new RegExp(`localhost:${_.port}`, "g"),
-      "localhost:<PORT>",
-    );
-  }
-  // Normalize temp directory paths
-  result = result.replace(/\/tmp\/git-proxy-test-[^/]+/g, "<TMP_DIR>");
+  // Normalize port
+  result = result.replace(
+    new RegExp(`localhost:${_.env.port}`, "g"),
+    "localhost:<PORT>",
+  );
+  // Normalize temp directory path
+  result = result.replace(new RegExp(_.env.tmpDir, "g"), "<TMP_DIR>");
   // Normalize full commit hashes (40 hex chars) and partial hashes (32 hex chars)
   result = result.replace(/[0-9a-f]{40}/g, "<FULL_SHA>");
   result = result.replace(/[0-9a-f]{32}/g, "<PARTIAL_SHA>");
@@ -322,7 +321,7 @@ describe("Git Proxy Integration Tests", () => {
         success: false,
       });
       expect(
-        normalizeOutput({ output: stderr, oldSha, newSha, port: env.port }),
+        normalizeOutput({ output: stderr, oldSha, newSha, env }),
       ).toMatchInlineSnapshot(`
       "remote: [WARN] No SSH key configured. Upstream push may fail for private repos.        
       remote: [INFO] Validating: refs/heads/main <OLD_SHA>..<NEW_SHA>        
@@ -391,7 +390,7 @@ describe("Git Proxy Integration Tests", () => {
         success: false,
       });
       expect(
-        normalizeOutput({ output: stderr, oldSha, newSha, port: env.port }),
+        normalizeOutput({ output: stderr, oldSha, newSha, env }),
       ).toMatchInlineSnapshot(`
       "remote: [WARN] No SSH key configured. Upstream push may fail for private repos.        
       remote: [INFO] Validating: refs/heads/agent/sneaky 00000000..<NEW_SHA>        
@@ -479,7 +478,7 @@ describe("Git Proxy Integration Tests", () => {
           output: firstStderr,
           oldSha,
           newSha,
-          port: env.port,
+          env,
         }),
       ).toMatchInlineSnapshot(`
         "remote: [WARN] No SSH key configured. Upstream push may fail for private repos.        
@@ -608,7 +607,7 @@ describe("Git Proxy Integration Tests", () => {
       stdout: "",
       success: false,
     });
-    expect(normalizeOutput({ output: stderr, oldSha, newSha, port: env.port }))
+    expect(normalizeOutput({ output: stderr, oldSha, newSha, env }))
       .toMatchInlineSnapshot(`
       "remote: [WARN] No SSH key configured. Upstream push may fail for private repos.        
       remote: [INFO] Validating: refs/heads/agent/force-test <OLD_SHA>..<NEW_SHA>        
@@ -764,7 +763,7 @@ describe("Git Proxy Integration Tests", () => {
       stdout: "",
       success: false,
     });
-    expect(normalizeOutput({ output: stderr, port: env.port }))
+    expect(normalizeOutput({ output: stderr, env }))
       .toMatchInlineSnapshot(`
       "Cloning into '.'...
       remote: Not Found - Unknown repo: unknown
@@ -828,7 +827,7 @@ describe("Git Proxy Integration Tests", () => {
         success: false,
       });
       expect(
-        normalizeOutput({ output: stderr, oldSha, newSha, port: env.port }),
+        normalizeOutput({ output: stderr, oldSha, newSha, env }),
       ).toMatchInlineSnapshot(`
       "remote: [WARN] No SSH key configured. Upstream push may fail for private repos.        
       remote: [INFO] Validating: refs/heads/main <OLD_SHA>..<NEW_SHA>        
@@ -978,7 +977,7 @@ describe("Git Proxy Integration Tests", () => {
         stdout: "",
         success: false,
       });
-      expect(normalizeOutput({ output: stderr, newSha, port: env.port }))
+      expect(normalizeOutput({ output: stderr, newSha, env }))
         .toMatchInlineSnapshot(`
       "remote: [WARN] No SSH key configured. Upstream push may fail for private repos.        
       remote: [INFO] Validating: refs/tags/v1.0 00000000..<NEW_SHA>        
