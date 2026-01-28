@@ -13,6 +13,7 @@ import { validateAndPush, parsePreReceiveInput, type PreReceiveContext } from ".
 async function initializeRepo(
   repoName: string,
   upstream: string,
+  baseBranch: string,
   reposDir: string,
   sshEnv: Record<string, string>
 ): Promise<void> {
@@ -74,6 +75,12 @@ async function initializeRepo(
   if (!fetchResult.success) {
     throw new Error(`Initial fetch failed for ${repoName}: ${fetchResult.stderr}`);
   }
+
+  // TODO the integration test for clone is not quite testing this need to add test for why we need it.
+  // Set HEAD to base_branch so clones checkout the right branch
+  await git(["symbolic-ref", "HEAD", `refs/heads/${baseBranch}`], {
+    cwd: repoPath,
+  });
 }
 
 // ============================================================================
@@ -94,12 +101,12 @@ async function installPreReceiveHook(repoPath: string, repoName: string): Promis
   // For development (.ts files), use process.argv[1] which points to the script
   const selfPath = process.argv[1] ?? Bun.main;
   const isTypeScript = selfPath.endsWith('.ts');
-  
+
   // Determine how to invoke the script
   // For compiled binaries, use process.execPath (the actual path like /usr/local/bin/git-proxy)
   // For .ts files in dev, use bun run with the script path
-  const execCommand = isTypeScript 
-    ? `bun run "${selfPath}"` 
+  const execCommand = isTypeScript
+    ? `bun run "${selfPath}"`
     : `"${process.execPath}"`;
 
   // Create hook script that calls our pre-receive subcommand
@@ -204,7 +211,7 @@ async function main(): Promise<void> {
   for (const [repoName, repoConfig] of Object.entries(config.repos)) {
     log.info(`Initializing repo: ${repoName}`);
     try {
-      await initializeRepo(repoName, repoConfig.upstream, runtimeConfig.reposDir, sshEnv);
+      await initializeRepo(repoName, repoConfig.upstream, repoConfig.base_branch, runtimeConfig.reposDir, sshEnv);
     } catch (error) {
       log.error(`Failed to initialize repo ${repoName}:`, error);
       throw error;

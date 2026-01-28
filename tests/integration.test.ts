@@ -710,6 +710,35 @@ describe("Git Proxy Integration Tests", () => {
     expect(fetchResult.success).toBe(true);
   });
 
+  test("clone checks out base_branch by default", async () => {
+    await writeConfig(env, {
+      repos: {
+        testproject: {
+          upstream: env.upstreamPath,
+          allowed_branches: ["agent/*"],
+          protected_paths: [],
+          base_branch: "main",
+        },
+      },
+    });
+
+    await startProxyServer(env);
+
+    // Clone from proxy
+    const cloneResult = await git(
+      ["clone", `http://localhost:${env.port}/testproject.git`, "."],
+      { cwd: env.clientPath },
+    );
+    expect(cloneResult.success).toBe(true);
+
+    // Verify we're on the base_branch (main)
+    const branchResult = await git(["branch", "--show-current"], {
+      cwd: env.clientPath,
+    });
+    expect(branchResult.success).toBe(true);
+    expect(branchResult.stdout.trim()).toBe("main");
+  });
+
   test("push to unknown repo fails", async () => {
     await writeConfig(env, {
       repos: {
