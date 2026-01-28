@@ -1,0 +1,15 @@
+services:
+  git-proxy:
+    build: .
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./config.json:/etc/git-proxy/config.json:ro
+      - repos:/var/lib/git-proxy/repos
+      - ~/.ssh/git-proxy:/run/secrets/ssh_key:ro
+    environment:
+      - GIT_SSH_KEY_PATH=/run/secrets/ssh_key
+      - LOG_LEVEL=debug
+
+volumes:
+  repos:

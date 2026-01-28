@@ -5,6 +5,9 @@
   "scripts": {
     "dev": "bun run --watch src/index.ts",
     "build": "bun build --compile --outfile git-proxy ./src/index.ts",
+    "up": "docker compose down && docker compose up",
+    "upd": "docker compose up --detach",
+    "upf": "docker compose down -v  && docker compose up --rebuild",
     "typecheck": "tsgo",
     "test": "bun test"
   },
