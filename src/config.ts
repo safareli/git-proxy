@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { resolve } from "path";
 import { readFileSync, existsSync } from "fs";
 
 // ============================================================================
@@ -84,8 +85,9 @@ export interface RuntimeConfig {
 export function getRuntimeConfig(): RuntimeConfig {
   const configPath =
     process.env["GIT_PROXY_CONFIG"] ?? "/etc/git-proxy/config.json";
-  const reposDir =
-    process.env["REPOS_DIR"] ?? "/var/lib/git-proxy/repos";
+  const reposDir = resolve(
+    process.env["REPOS_DIR"] ?? "/var/lib/git-proxy/repos"
+  );
   const httpPort = parseInt(process.env["HTTP_PORT"] ?? "8080", 10);
   const logLevel = (process.env["LOG_LEVEL"] ?? "info") as RuntimeConfig["logLevel"];
   const sshKeyPath = process.env["GIT_SSH_KEY_PATH"];
