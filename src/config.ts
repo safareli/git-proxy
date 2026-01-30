@@ -21,11 +21,11 @@ const RepoConfigSchema = z
   })
   .refine(
     (data) => !(data.allowed_branches && data.blocked_branches),
-    "Cannot specify both allowed_branches and blocked_branches"
+    "Cannot specify both allowed_branches and blocked_branches",
   )
   .refine(
     (data) => data.allowed_branches ?? data.blocked_branches,
-    "Must specify either allowed_branches or blocked_branches"
+    "Must specify either allowed_branches or blocked_branches",
   );
 
 const ConfigSchema = z.object({
@@ -83,13 +83,15 @@ export interface RuntimeConfig {
 }
 
 export function getRuntimeConfig(): RuntimeConfig {
-  const configPath =
-    process.env["GIT_PROXY_CONFIG"] ?? "/etc/git-proxy/config.json";
+  const configPath = resolve(
+    process.env["GIT_PROXY_CONFIG"] ?? "/etc/git-proxy/config.json",
+  );
   const reposDir = resolve(
-    process.env["REPOS_DIR"] ?? "/var/lib/git-proxy/repos"
+    process.env["REPOS_DIR"] ?? "/var/lib/git-proxy/repos",
   );
   const httpPort = parseInt(process.env["HTTP_PORT"] ?? "8080", 10);
-  const logLevel = (process.env["LOG_LEVEL"] ?? "info") as RuntimeConfig["logLevel"];
+  const logLevel = (process.env["LOG_LEVEL"] ??
+    "info") as RuntimeConfig["logLevel"];
   const sshKeyPath = process.env["GIT_SSH_KEY_PATH"];
 
   if (isNaN(httpPort) || httpPort < 1 || httpPort > 65535) {
