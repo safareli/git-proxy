@@ -12,6 +12,7 @@ config.json
 
 # Repos directory (runtime data)
 repos/
+.repos/
 
 # OS
 .DS_Store
