@@ -1,5 +1,5 @@
 import { existsSync, mkdirSync, writeFileSync } from "fs";
-import { join } from "path";
+import { join, dirname } from "path";
 import { loadConfig, getRuntimeConfig } from "./config.ts";
 import { startServer } from "./server.ts";
 import { git, log, setLogLevel } from "./utils.ts";
@@ -18,6 +18,12 @@ async function initializeRepo(
   sshEnv: Record<string, string>
 ): Promise<void> {
   const repoPath = join(reposDir, `${repoName}.git`);
+
+  // Create parent directory for nested repo names (e.g., "user/project" -> "user/")
+  const parentDir = dirname(repoPath);
+  if (!existsSync(parentDir)) {
+    mkdirSync(parentDir, { recursive: true });
+  }
 
   if (existsSync(repoPath)) {
     log.info(`Repo already exists: ${repoPath}`);

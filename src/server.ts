@@ -59,7 +59,9 @@ export function parseRepoFromPath(
 ): { repoName: string; subPath: string } | null {
   // Expected format: /<repo-name>.git/<sub-path>
   // or /<repo-name>.git
-  const match = pathname.match(/^\/([^/]+)\.git(\/.*)?$/);
+  // Repo names can include slashes for namespacing, e.g., "user/project"
+  // Use non-greedy matching (.+?) to find the first .git boundary
+  const match = pathname.match(/^\/(.+?)\.git(\/.*)?$/);
   if (!match) {
     return null;
   }

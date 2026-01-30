@@ -113,9 +113,12 @@ describe("parseRepoFromPath", () => {
       expect(result).toBeNull();
     });
 
-    test("returns null for path with nested .git", () => {
+    test("parses path with nested directories (namespaced repo)", () => {
       const result = parseRepoFromPath("/path/to/myrepo.git");
-      expect(result).toBeNull();
+      expect(result).toEqual({
+        repoName: "path/to/myrepo",
+        subPath: "",
+      });
     });
 
     test("returns null for .git without repo name", () => {
@@ -184,6 +187,22 @@ describe("parseRepoFromPath", () => {
       expect(result).toEqual({
         repoName: "repo-name_123.test",
         subPath: "",
+      });
+    });
+
+    test("parses namespaced repo with subpath", () => {
+      const result = parseRepoFromPath("/user/project.git/info/refs");
+      expect(result).toEqual({
+        repoName: "user/project",
+        subPath: "/info/refs",
+      });
+    });
+
+    test("parses deeply namespaced repo", () => {
+      const result = parseRepoFromPath("/org/team/project.git/git-receive-pack");
+      expect(result).toEqual({
+        repoName: "org/team/project",
+        subPath: "/git-receive-pack",
       });
     });
 

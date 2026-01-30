@@ -4,13 +4,13 @@ help:
 
 # Run dev server (foreground)
 dev:
-    bun run --watch src/index.ts
+    bun run --env-file=.config --watch src/index.ts
 
 # Start dev server in background with tmux and tail logs
 dev-up:
     tmux kill-session -t git-proxy 2>/dev/null || true
     : > /tmp/git-proxy.log
-    tmux new -d -s git-proxy 'bun run --watch src/index.ts 2>&1 | tee /tmp/git-proxy.log'
+    tmux new -d -s git-proxy 'bun run --env-file=.config --watch src/index.ts 2>&1 | tee /tmp/git-proxy.log'
     tmux set -t git-proxy status-right 'detach: C-b d | help: C-b ?'
     @echo 'Started. Attach: just dev-attach | Logs: just dev-logs'
     just dev-logs

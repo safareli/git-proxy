@@ -168,6 +168,7 @@ async function writeConfig(env: TestEnv, config: object): Promise<void> {
 async function startProxyServer(env: TestEnv): Promise<void> {
   const indexPath = join(import.meta.dir, "../src/index.ts");
 
+  // Use minimal env for test isolation - only include what's necessary
   env.serverProc = Bun.spawn(["bun", "run", indexPath], {
     env: {
       ...process.env,
@@ -237,7 +238,7 @@ describe("Git Proxy Integration Tests", () => {
     // Write config allowing agent/* branches
     await writeConfig(env, {
       repos: {
-        testproject: {
+        "testorg/testproject": {
           upstream: env.upstreamPath,
           allowed_branches: ["agent/*", "feature/*"],
           protected_paths: [".github/**"],
@@ -250,7 +251,7 @@ describe("Git Proxy Integration Tests", () => {
     await startProxyServer(env);
 
     // Clone from proxy
-    await cloneFromProxy(env, "testproject");
+    await cloneFromProxy(env, "testorg/testproject");
 
     // Create and push to allowed branch
     await git(["checkout", "-b", "agent/test-feature"], {
@@ -282,7 +283,7 @@ describe("Git Proxy Integration Tests", () => {
   test("push to blocked branch fails", async () => {
     await writeConfig(env, {
       repos: {
-        testproject: {
+        "testorg/testproject": {
           upstream: env.upstreamPath,
           allowed_branches: ["agent/*"],
           protected_paths: [],
@@ -292,7 +293,7 @@ describe("Git Proxy Integration Tests", () => {
     });
 
     await startProxyServer(env);
-    await cloneFromProxy(env, "testproject");
+    await cloneFromProxy(env, "testorg/testproject");
 
     // Get the current HEAD sha before making changes
     const oldSha = await getHeadShortSha(env.clientPath);
@@ -320,9 +321,8 @@ describe("Git Proxy Integration Tests", () => {
         stdout: "",
         success: false,
       });
-      expect(
-        normalizeOutput({ output: stderr, oldSha, newSha, env }),
-      ).toMatchInlineSnapshot(`
+      expect(normalizeOutput({ output: stderr, oldSha, newSha, env }))
+        .toMatchInlineSnapshot(`
       "remote: [WARN] No SSH key configured. Upstream push may fail for private repos.        
       remote: [INFO] Validating: refs/heads/main <OLD_SHA>..<NEW_SHA>        
       remote: 
@@ -332,9 +332,9 @@ describe("Git Proxy Integration Tests", () => {
       remote: Branch 'main' is not in allowed list. Allowed patterns: agent/*        
       remote: ==================================================        
       remote: 
-      To http://localhost:<PORT>/testproject.git
+      To http://localhost:<PORT>/testorg/testproject.git
        ! [remote rejected] main -> main (pre-receive hook declined)
-      error: failed to push some refs to 'http://localhost:<PORT>/testproject.git'
+      error: failed to push some refs to 'http://localhost:<PORT>/testorg/testproject.git'
       "
     `);
 
@@ -347,7 +347,7 @@ describe("Git Proxy Integration Tests", () => {
   test("push modifying protected paths fails", async () => {
     await writeConfig(env, {
       repos: {
-        testproject: {
+        "testorg/testproject": {
           upstream: env.upstreamPath,
           allowed_branches: ["agent/*"],
           protected_paths: [".github/**"],
@@ -357,7 +357,7 @@ describe("Git Proxy Integration Tests", () => {
     });
 
     await startProxyServer(env);
-    await cloneFromProxy(env, "testproject");
+    await cloneFromProxy(env, "testorg/testproject");
 
     const oldSha = await getHeadShortSha(env.clientPath);
 
@@ -389,20 +389,19 @@ describe("Git Proxy Integration Tests", () => {
         stdout: "",
         success: false,
       });
-      expect(
-        normalizeOutput({ output: stderr, oldSha, newSha, env }),
-      ).toMatchInlineSnapshot(`
+      expect(normalizeOutput({ output: stderr, oldSha, newSha, env }))
+        .toMatchInlineSnapshot(`
       "remote: [WARN] No SSH key configured. Upstream push may fail for private repos.        
       remote: [INFO] Validating: refs/heads/agent/sneaky 00000000..<NEW_SHA>        
       remote: [DEBUG] git rev-parse --verify origin/main {        
-      remote:   cwd: "<TMP_DIR>/proxy-repos/testproject.git",        
+      remote:   cwd: "<TMP_DIR>/proxy-repos/testorg/testproject.git",        
       remote: }        
       remote: [DEBUG] git rev-list <NEW_SHA><PARTIAL_SHA> --not origin/main {        
-      remote:   cwd: "<TMP_DIR>/proxy-repos/testproject.git",        
+      remote:   cwd: "<TMP_DIR>/proxy-repos/testorg/testproject.git",        
       remote: }        
       remote: [DEBUG] New commits being pushed: 1        
       remote: [DEBUG] git diff --name-only origin/main <NEW_SHA><PARTIAL_SHA> {        
-      remote:   cwd: "<TMP_DIR>/proxy-repos/testproject.git",        
+      remote:   cwd: "<TMP_DIR>/proxy-repos/testorg/testproject.git",        
       remote: }        
       remote: [DEBUG] Files changed in push: .github/workflows/ci.yml        
       remote: 
@@ -413,9 +412,9 @@ describe("Git Proxy Integration Tests", () => {
       remote:   - .github/workflows/ci.yml        
       remote: ==================================================        
       remote: 
-      To http://localhost:<PORT>/testproject.git
+      To http://localhost:<PORT>/testorg/testproject.git
        ! [remote rejected] agent/sneaky -> agent/sneaky (pre-receive hook declined)
-      error: failed to push some refs to 'http://localhost:<PORT>/testproject.git'
+      error: failed to push some refs to 'http://localhost:<PORT>/testorg/testproject.git'
       "
     `);
 
@@ -430,7 +429,7 @@ describe("Git Proxy Integration Tests", () => {
   test("push modifying protected paths then reverting succeeds", async () => {
     await writeConfig(env, {
       repos: {
-        testproject: {
+        "testorg/testproject": {
           upstream: env.upstreamPath,
           allowed_branches: ["agent/*"],
           protected_paths: [".github/**"],
@@ -440,7 +439,7 @@ describe("Git Proxy Integration Tests", () => {
     });
 
     await startProxyServer(env);
-    await cloneFromProxy(env, "testproject");
+    await cloneFromProxy(env, "testorg/testproject");
 
     // Create branch and modify protected file
     await git(["checkout", "-b", "agent/revert-test"], { cwd: env.clientPath });
@@ -484,14 +483,14 @@ describe("Git Proxy Integration Tests", () => {
         "remote: [WARN] No SSH key configured. Upstream push may fail for private repos.        
         remote: [INFO] Validating: refs/heads/agent/revert-test 00000000..<NEW_SHA>        
         remote: [DEBUG] git rev-parse --verify origin/main {        
-        remote:   cwd: "<TMP_DIR>/proxy-repos/testproject.git",        
+        remote:   cwd: "<TMP_DIR>/proxy-repos/testorg/testproject.git",        
         remote: }        
         remote: [DEBUG] git rev-list <NEW_SHA><PARTIAL_SHA> --not origin/main {        
-        remote:   cwd: "<TMP_DIR>/proxy-repos/testproject.git",        
+        remote:   cwd: "<TMP_DIR>/proxy-repos/testorg/testproject.git",        
         remote: }        
         remote: [DEBUG] New commits being pushed: 1        
         remote: [DEBUG] git diff --name-only origin/main <NEW_SHA><PARTIAL_SHA> {        
-        remote:   cwd: "<TMP_DIR>/proxy-repos/testproject.git",        
+        remote:   cwd: "<TMP_DIR>/proxy-repos/testorg/testproject.git",        
         remote: }        
         remote: [DEBUG] Files changed in push: .github/workflows/ci.yml        
         remote: 
@@ -502,9 +501,9 @@ describe("Git Proxy Integration Tests", () => {
         remote:   - .github/workflows/ci.yml        
         remote: ==================================================        
         remote: 
-        To http://localhost:<PORT>/testproject.git
+        To http://localhost:<PORT>/testorg/testproject.git
          ! [remote rejected] agent/revert-test -> agent/revert-test (pre-receive hook declined)
-        error: failed to push some refs to 'http://localhost:<PORT>/testproject.git'
+        error: failed to push some refs to 'http://localhost:<PORT>/testorg/testproject.git'
         "
       `);
 
@@ -550,7 +549,7 @@ describe("Git Proxy Integration Tests", () => {
   test("force push is denied by default", async () => {
     await writeConfig(env, {
       repos: {
-        testproject: {
+        "testorg/testproject": {
           upstream: env.upstreamPath,
           allowed_branches: ["agent/*"],
           protected_paths: [],
@@ -560,7 +559,7 @@ describe("Git Proxy Integration Tests", () => {
     });
 
     await startProxyServer(env);
-    await cloneFromProxy(env, "testproject");
+    await cloneFromProxy(env, "testorg/testproject");
 
     // Create and push initial branch with TWO commits
     await git(["checkout", "-b", "agent/force-test"], { cwd: env.clientPath });
@@ -612,7 +611,7 @@ describe("Git Proxy Integration Tests", () => {
       "remote: [WARN] No SSH key configured. Upstream push may fail for private repos.        
       remote: [INFO] Validating: refs/heads/agent/force-test <OLD_SHA>..<NEW_SHA>        
       remote: [DEBUG] git merge-base --is-ancestor <OLD_SHA><PARTIAL_SHA> <NEW_SHA><PARTIAL_SHA> {        
-      remote:   cwd: "<TMP_DIR>/proxy-repos/testproject.git",        
+      remote:   cwd: "<TMP_DIR>/proxy-repos/testorg/testproject.git",        
       remote: }        
       remote: 
       remote: ==================================================        
@@ -621,9 +620,9 @@ describe("Git Proxy Integration Tests", () => {
       remote: Force push detected and not allowed. Old: <OLD_SHA>, New: <NEW_SHA>        
       remote: ==================================================        
       remote: 
-      To http://localhost:<PORT>/testproject.git
+      To http://localhost:<PORT>/testorg/testproject.git
        ! [remote rejected] agent/force-test -> agent/force-test (pre-receive hook declined)
-      error: failed to push some refs to 'http://localhost:<PORT>/testproject.git'
+      error: failed to push some refs to 'http://localhost:<PORT>/testorg/testproject.git'
       "
     `);
 
@@ -638,7 +637,7 @@ describe("Git Proxy Integration Tests", () => {
   test("force push is allowed when configured", async () => {
     await writeConfig(env, {
       repos: {
-        testproject: {
+        "testorg/testproject": {
           upstream: env.upstreamPath,
           allowed_branches: ["agent/*"],
           protected_paths: [],
@@ -649,7 +648,7 @@ describe("Git Proxy Integration Tests", () => {
     });
 
     await startProxyServer(env);
-    await cloneFromProxy(env, "testproject");
+    await cloneFromProxy(env, "testorg/testproject");
 
     // Create and push initial branch with TWO commits
     await git(["checkout", "-b", "agent/force-test"], { cwd: env.clientPath });
@@ -683,7 +682,7 @@ describe("Git Proxy Integration Tests", () => {
   test("clone and fetch work correctly", async () => {
     await writeConfig(env, {
       repos: {
-        testproject: {
+        "testorg/testproject": {
           upstream: env.upstreamPath,
           allowed_branches: ["agent/*"],
           protected_paths: [],
@@ -696,7 +695,7 @@ describe("Git Proxy Integration Tests", () => {
 
     // Clone should work
     const cloneResult = await git(
-      ["clone", `http://localhost:${env.port}/testproject.git`, "."],
+      ["clone", `http://localhost:${env.port}/testorg/testproject.git`, "."],
       { cwd: env.clientPath },
     );
     expect(cloneResult.success).toBe(true);
@@ -712,7 +711,7 @@ describe("Git Proxy Integration Tests", () => {
   test("clone checks out base_branch by default", async () => {
     await writeConfig(env, {
       repos: {
-        testproject: {
+        "testorg/testproject": {
           upstream: env.upstreamPath,
           allowed_branches: ["agent/*"],
           protected_paths: [],
@@ -725,7 +724,7 @@ describe("Git Proxy Integration Tests", () => {
 
     // Clone from proxy
     const cloneResult = await git(
-      ["clone", `http://localhost:${env.port}/testproject.git`, "."],
+      ["clone", `http://localhost:${env.port}/testorg/testproject.git`, "."],
       { cwd: env.clientPath },
     );
     expect(cloneResult.success).toBe(true);
@@ -741,7 +740,7 @@ describe("Git Proxy Integration Tests", () => {
   test("push to unknown repo fails", async () => {
     await writeConfig(env, {
       repos: {
-        testproject: {
+        "testorg/testproject": {
           upstream: env.upstreamPath,
           allowed_branches: ["agent/*"],
           protected_paths: [],
@@ -763,8 +762,7 @@ describe("Git Proxy Integration Tests", () => {
       stdout: "",
       success: false,
     });
-    expect(normalizeOutput({ output: stderr, env }))
-      .toMatchInlineSnapshot(`
+    expect(normalizeOutput({ output: stderr, env })).toMatchInlineSnapshot(`
       "Cloning into '.'...
       remote: Not Found - Unknown repo: unknown
       fatal: repository 'http://localhost:<PORT>/unknown.git/' not found
@@ -775,7 +773,7 @@ describe("Git Proxy Integration Tests", () => {
   test("blocked_branches config works", async () => {
     await writeConfig(env, {
       repos: {
-        testproject: {
+        "testorg/testproject": {
           upstream: env.upstreamPath,
           blocked_branches: ["main", "master", "release/*"],
           protected_paths: [],
@@ -785,7 +783,7 @@ describe("Git Proxy Integration Tests", () => {
     });
 
     await startProxyServer(env);
-    await cloneFromProxy(env, "testproject");
+    await cloneFromProxy(env, "testorg/testproject");
 
     // Push to non-blocked branch should work
     await git(["checkout", "-b", "feature/my-feature"], {
@@ -826,9 +824,8 @@ describe("Git Proxy Integration Tests", () => {
         stdout: "",
         success: false,
       });
-      expect(
-        normalizeOutput({ output: stderr, oldSha, newSha, env }),
-      ).toMatchInlineSnapshot(`
+      expect(normalizeOutput({ output: stderr, oldSha, newSha, env }))
+        .toMatchInlineSnapshot(`
       "remote: [WARN] No SSH key configured. Upstream push may fail for private repos.        
       remote: [INFO] Validating: refs/heads/main <OLD_SHA>..<NEW_SHA>        
       remote: 
@@ -838,9 +835,9 @@ describe("Git Proxy Integration Tests", () => {
       remote: Branch 'main' is blocked. Blocked patterns: main, master, release/*        
       remote: ==================================================        
       remote: 
-      To http://localhost:<PORT>/testproject.git
+      To http://localhost:<PORT>/testorg/testproject.git
        ! [remote rejected] main -> main (pre-receive hook declined)
-      error: failed to push some refs to 'http://localhost:<PORT>/testproject.git'
+      error: failed to push some refs to 'http://localhost:<PORT>/testorg/testproject.git'
       "
     `);
 
@@ -853,7 +850,7 @@ describe("Git Proxy Integration Tests", () => {
   test("proxy fetches upstream changes before serving", async () => {
     await writeConfig(env, {
       repos: {
-        testproject: {
+        "testorg/testproject": {
           upstream: env.upstreamPath,
           allowed_branches: ["agent/*"],
           protected_paths: [],
@@ -865,7 +862,7 @@ describe("Git Proxy Integration Tests", () => {
     await startProxyServer(env);
 
     // First, clone from proxy
-    await cloneFromProxy(env, "testproject");
+    await cloneFromProxy(env, "testorg/testproject");
 
     // Now simulate someone pushing directly to upstream (e.g., via GitHub web UI)
     // We do this by pushing to the bare upstream repo directly
@@ -909,7 +906,7 @@ describe("Git Proxy Integration Tests", () => {
   test("health endpoint works", async () => {
     await writeConfig(env, {
       repos: {
-        testproject: {
+        "testorg/testproject": {
           upstream: env.upstreamPath,
           allowed_branches: ["agent/*"],
           protected_paths: [],
@@ -930,7 +927,7 @@ describe("Git Proxy Integration Tests", () => {
   test("push tags is blocked", async () => {
     await writeConfig(env, {
       repos: {
-        testproject: {
+        "testorg/testproject": {
           upstream: env.upstreamPath,
           allowed_branches: ["agent/*"],
           protected_paths: [],
@@ -940,7 +937,7 @@ describe("Git Proxy Integration Tests", () => {
     });
 
     await startProxyServer(env);
-    await cloneFromProxy(env, "testproject");
+    await cloneFromProxy(env, "testorg/testproject");
 
     // Create a branch with a commit
     await git(["checkout", "-b", "agent/tagging"], { cwd: env.clientPath });
@@ -988,9 +985,9 @@ describe("Git Proxy Integration Tests", () => {
       remote: Only branch pushes allowed (refs/heads/*), got: refs/tags/v1.0        
       remote: ==================================================        
       remote: 
-      To http://localhost:<PORT>/testproject.git
+      To http://localhost:<PORT>/testorg/testproject.git
        ! [remote rejected] v1.0 -> v1.0 (pre-receive hook declined)
-      error: failed to push some refs to 'http://localhost:<PORT>/testproject.git'
+      error: failed to push some refs to 'http://localhost:<PORT>/testorg/testproject.git'
       "
     `);
 
