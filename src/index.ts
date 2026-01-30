@@ -198,6 +198,12 @@ async function main(): Promise<void> {
   const runtimeConfig = getRuntimeConfig();
   setLogLevel(runtimeConfig.logLevel);
 
+  // Export resolved absolute paths to env vars so git hooks (which run as
+  // separate processes) inherit them. Without this, relative paths would
+  // resolve against the hook's cwd (the repo dir) instead of the server's cwd.
+  process.env["GIT_PROXY_CONFIG"] = runtimeConfig.configPath;
+  process.env["REPOS_DIR"] = runtimeConfig.reposDir;
+
   log.info("Git Proxy starting...");
   log.info(`Config: ${runtimeConfig.configPath}`);
   log.info(`Repos dir: ${runtimeConfig.reposDir}`);
