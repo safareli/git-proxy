@@ -5,6 +5,7 @@ A secure git proxy that enables untrusted agents (AI coding assistants, CI runne
 ## Why?
 
 AI coding agents are powerful but need guardrails. You want them to:
+
 - ✅ Write code and push to feature branches
 - ✅ Open pull requests for review
 - ✅ See CI results and fix failures
@@ -58,13 +59,9 @@ The most secure setup combines **three layers of defense**:
   "repos": {
     "myproject": {
       "upstream": "git@github.com:myorg/myproject.git",
-      
-      "allowed_branches": [
-        "agent/*",
-        "ai/*",
-        "feature/*"
-      ],
-      
+
+      "allowed_branches": ["agent/*", "ai/*", "feature/*"],
+
       "protected_paths": [
         ".github/**",
         ".gitlab-ci.yml",
@@ -80,7 +77,7 @@ The most secure setup combines **three layers of defense**:
         "*.pem",
         "*.key"
       ],
-      
+
       "force_push": "deny",
       "base_branch": "main"
     }
@@ -92,19 +89,21 @@ The most secure setup combines **three layers of defense**:
 
 Create a [fine-grained personal access token](https://github.blog/security/application-security/introducing-fine-grained-personal-access-tokens-for-github/) with minimal permissions:
 
-| Permission | Access | Purpose |
-|------------|--------|---------|
-| **Contents** | Read | Read repo contents (for PR diffs) |
-| **Pull requests** | Write | Open/update PRs |
-| **Actions** | Read | View CI run results and logs |
-| **Metadata** | Read | Required (automatic) |
+| Permission        | Access | Purpose                           |
+| ----------------- | ------ | --------------------------------- |
+| **Contents**      | Read   | Read repo contents (for PR diffs) |
+| **Pull requests** | Write  | Open/update PRs                   |
+| **Actions**       | Read   | View CI run results and logs      |
+| **Metadata**      | Read   | Required (automatic)              |
 
 **Why no Contents:Write?**
+
 - All git push operations go through the **Git Proxy** (which has its own SSH key)
 - The agent's PAT is only used for **GitHub API** calls (PRs, CI status)
 - This prevents the agent from bypassing the proxy by pushing directly to GitHub
 
 **Do NOT grant:**
+
 - Contents: Write (use proxy for pushes!)
 - Administration
 - Workflows (prevents `.github/workflows` modification via API)
@@ -114,6 +113,7 @@ Create a [fine-grained personal access token](https://github.blog/security/appli
 - Any "delete" capabilities
 
 **Additional settings:**
+
 - Scope to **specific repositories only**
 - Set **expiration date** (30-90 days recommended)
 - Use **organization-level token** if available (better audit trail)
@@ -138,29 +138,29 @@ Go to Repository → Settings → Branches → Add rule for `main`:
 
 ### Threats Addressed
 
-| Threat | Risk | Mitigation |
-|--------|------|------------|
-| **Direct push to main** | Agent ships unreviewed code | Branch restrictions (proxy) + branch protection (GitHub) |
-| **Bypass proxy via API** | Agent pushes directly to GitHub, skipping validation | PAT has no `Contents:Write` permission |
-| **CI/CD poisoning** | Agent modifies workflows to exfiltrate secrets or run malicious code | Protected paths block `.github/**` |
-| **Supply chain attack** | Agent modifies build configs (Dockerfile, nix, Makefile) | Protected paths block build files |
-| **Secret exfiltration** | Agent reads/modifies secrets | Protected paths + no secrets permission on PAT |
-| **Repository deletion** | Agent deletes repo or branches | PAT has no delete permissions |
-| **Settings modification** | Agent changes repo settings, webhooks | PAT has no admin permissions |
-| **Force push history rewrite** | Agent rewrites git history | Force push denied by proxy |
-| **Credential theft** | Agent steals proxy credentials | SSH key only accessible to proxy, not agent |
-| **Lateral movement** | Agent accesses other repos | PAT scoped to specific repos only |
-| **Persistent access** | Compromised agent maintains access | PAT has expiration date |
+| Threat                         | Risk                                                                 | Mitigation                                               |
+| ------------------------------ | -------------------------------------------------------------------- | -------------------------------------------------------- |
+| **Direct push to main**        | Agent ships unreviewed code                                          | Branch restrictions (proxy) + branch protection (GitHub) |
+| **Bypass proxy via API**       | Agent pushes directly to GitHub, skipping validation                 | PAT has no `Contents:Write` permission                   |
+| **CI/CD poisoning**            | Agent modifies workflows to exfiltrate secrets or run malicious code | Protected paths block `.github/**`                       |
+| **Supply chain attack**        | Agent modifies build configs (Dockerfile, nix, Makefile)             | Protected paths block build files                        |
+| **Secret exfiltration**        | Agent reads/modifies secrets                                         | Protected paths + no secrets permission on PAT           |
+| **Repository deletion**        | Agent deletes repo or branches                                       | PAT has no delete permissions                            |
+| **Settings modification**      | Agent changes repo settings, webhooks                                | PAT has no admin permissions                             |
+| **Force push history rewrite** | Agent rewrites git history                                           | Force push denied by proxy                               |
+| **Credential theft**           | Agent steals proxy credentials                                       | SSH key only accessible to proxy, not agent              |
+| **Lateral movement**           | Agent accesses other repos                                           | PAT scoped to specific repos only                        |
+| **Persistent access**          | Compromised agent maintains access                                   | PAT has expiration date                                  |
 
 ### Threats NOT Addressed (Require Additional Measures)
 
-| Threat | Additional Mitigation Needed |
-|--------|------------------------------|
-| **Malicious code in PR** | Human review before merge |
-| **Subtle backdoors** | Code review + security scanning |
-| **Resource abuse** | Rate limiting, compute quotas |
-| **Data exfiltration via code** | Network isolation, egress filtering |
-| **Compromised dependencies** | Dependency scanning, lockfile review |
+| Threat                         | Additional Mitigation Needed         |
+| ------------------------------ | ------------------------------------ |
+| **Malicious code in PR**       | Human review before merge            |
+| **Subtle backdoors**           | Code review + security scanning      |
+| **Resource abuse**             | Rate limiting, compute quotas        |
+| **Data exfiltration via code** | Network isolation, egress filtering  |
+| **Compromised dependencies**   | Dependency scanning, lockfile review |
 
 ---
 
@@ -298,7 +298,7 @@ git clone http://localhost:8080/myproject.git
 ### Docker Compose
 
 ```yaml
-version: '3.8'
+version: "3.8"
 services:
   git-proxy:
     build: .
@@ -323,14 +323,14 @@ secrets:
 
 ### Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `GIT_SSH_KEY` | - | GitHub SSH private key (content) |
-| `GIT_SSH_KEY_FILE` | - | Path to SSH private key file |
-| `GIT_PROXY_CONFIG` | `/etc/git-proxy/config.json` | Configuration file path |
-| `HTTP_PORT` | `8080` | HTTP server port |
-| `REPOS_DIR` | `/var/lib/git-proxy/repos` | Bare repository storage |
-| `LOG_LEVEL` | `info` | Logging verbosity |
+| Variable           | Default                      | Description                      |
+| ------------------ | ---------------------------- | -------------------------------- |
+| `GIT_SSH_KEY`      | -                            | GitHub SSH private key (content) |
+| `GIT_SSH_KEY_FILE` | -                            | Path to SSH private key file     |
+| `GIT_PROXY_CONFIG` | `/etc/git-proxy/config.json` | Configuration file path          |
+| `HTTP_PORT`        | `8080`                       | HTTP server port                 |
+| `REPOS_DIR`        | `/var/lib/git-proxy/repos`   | Bare repository storage          |
+| `LOG_LEVEL`        | `info`                       | Logging verbosity                |
 
 ---
 
@@ -339,6 +339,7 @@ secrets:
 Before deploying, verify:
 
 ### Git Proxy
+
 - [ ] Configuration uses `allowed_branches` (whitelist), not `blocked_branches`
 - [ ] All sensitive paths are in `protected_paths`
 - [ ] `force_push` is set to `deny`
@@ -346,6 +347,7 @@ Before deploying, verify:
 - [ ] SSH key has minimal permissions (deploy key, not user key)
 
 ### Fine-Grained PAT
+
 - [ ] Token scoped to specific repositories
 - [ ] Only `Contents:Read`, `Pull requests:Write`, `Actions:Read` granted
 - [ ] **No `Contents:Write`** (prevents bypassing proxy)
@@ -354,6 +356,7 @@ Before deploying, verify:
 - [ ] Token stored securely in agent environment (separate from proxy's SSH key)
 
 ### GitHub Repository
+
 - [ ] Branch protection enabled on `main`
 - [ ] PR required for merging
 - [ ] At least one approval required
@@ -361,6 +364,7 @@ Before deploying, verify:
 - [ ] "Do not allow bypassing" enabled
 
 ### Network
+
 - [ ] Proxy only accessible from agent network
 - [ ] Agent cannot reach GitHub directly (optional, extra security)
 - [ ] Egress filtering if possible
@@ -375,16 +379,16 @@ When the proxy rejects a push, the agent sees clear error messages:
 remote: ════════════════════════════════════════════════════════════
 remote: PUSH REJECTED
 remote: ════════════════════════════════════════════════════════════
-remote: 
+remote:
 remote: Branch not allowed: refs/heads/main
-remote: 
+remote:
 remote: Allowed patterns:
 remote:   - agent/*
 remote:   - feature/*
-remote: 
+remote:
 remote: Please push to an allowed branch, e.g.:
 remote:   git push origin agent/my-feature
-remote: 
+remote:
 remote: ════════════════════════════════════════════════════════════
 ```
 
@@ -392,14 +396,14 @@ remote: ════════════════════════
 remote: ════════════════════════════════════════════════════════════
 remote: PUSH REJECTED
 remote: ════════════════════════════════════════════════════════════
-remote: 
+remote:
 remote: Protected paths modified:
 remote:   - .github/workflows/ci.yml
 remote:   - Dockerfile
-remote: 
+remote:
 remote: These files cannot be modified by this proxy.
 remote: Please remove these changes and try again.
-remote: 
+remote:
 remote: ════════════════════════════════════════════════════════════
 ```
 
@@ -407,15 +411,54 @@ remote: ════════════════════════
 
 ## Comparison with Alternatives
 
-| Approach | Branch Control | Path Protection | Credential Isolation | Offline Validation |
-|----------|---------------|-----------------|---------------------|-------------------|
-| **Git Proxy** | ✅ | ✅ | ✅ | ✅ |
-| PAT only | ❌ | ❌ | ❌ | ❌ |
-| Branch protection only | ✅ | ❌ | ❌ | ❌ |
-| Git hooks (client-side) | ❌ Bypassable | ❌ Bypassable | ❌ | ❌ |
-| GitHub Actions validation | ✅ | ✅ | ❌ | ❌ After push |
+| Approach                  | Branch Control | Path Protection | Credential Isolation | Offline Validation |
+| ------------------------- | -------------- | --------------- | -------------------- | ------------------ |
+| **Git Proxy**             | ✅             | ✅              | ✅                   | ✅                 |
+| PAT only                  | ❌             | ❌              | ❌                   | ❌                 |
+| Branch protection only    | ✅             | ❌              | ❌                   | ❌                 |
+| Git hooks (client-side)   | ❌ Bypassable  | ❌ Bypassable   | ❌                   | ❌                 |
+| GitHub Actions validation | ✅             | ✅              | ❌                   | ❌ After push      |
 
 Git Proxy is the only solution that validates **before** data reaches GitHub and provides **credential isolation** (agent never sees the GitHub token).
+
+---
+
+## Caveats
+
+For this proxy to be effective, you must ensure the agent cannot access your credentials through other means. Here are common pitfalls:
+
+### SSH Keys in VMs
+
+If you're using a VM for agent development (e.g., via orbstack or similar tools), be aware that many tools automatically mount your full home directory, which includes `~/.ssh`. This means the agent can still access your SSH keys and push directly to GitHub, bypassing this proxy entirely.
+
+**Solution:** Configure your VM tool to not mount SSH keys, or use selective directory mounting that excludes sensitive files.
+
+### Colima / Docker Desktop with Mounted Home Directory
+
+When using Colima vm with type docker, where dockerd runs in a VM alongside your development environment, avoid mounting your entire home directory into containers. Agents running in those containers would have access to any sensitive files you mount.
+
+**Solution:** Only mount the specific directories needed for development. Never mount `~/.ssh`, or `.env` files which have important secrets or other credential directories.
+
+### VS Code Remote SSH Terminal Authentication
+
+When using VS Code (or forks like Cursor) to SSH into a development machine, VS Code's `git.terminalAuthentication` feature injects environment variables and askpass helpers into spawned terminals. This allows git operations in those terminals to use your **host machine's** credentials, bypassing the proxy's protection.
+
+**Solution:** Disable `git.terminalAuthentication` in VS Code settings when working in untrusted agent environments:
+
+```json
+{
+  "git.terminalAuthentication": false
+}
+```
+
+### Docker Running in the Same VM
+
+If the git-proxy runs in a Docker container within the same VM where the agent is doing development, it won't provide protection. The agent (running on the VM host) can see the filesystem of all containers, including the proxy's SSH keys.
+
+**Solutions:**
+
+- Run the git-proxy on a **separate VM** or the host machine outside the agent's reach
+- Use the host-based utilities provided in this repository to run the proxy outside Docker
 
 ---
 
