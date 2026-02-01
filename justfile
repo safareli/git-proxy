@@ -13,7 +13,6 @@ dev-up:
     tmux new -d -s git-proxy 'bun run --env-file=.config --watch src/index.ts 2>&1 | tee /tmp/git-proxy.log'
     tmux set -t git-proxy status-right 'detach: C-b d | help: C-b ?'
     @echo 'Started. Attach: just dev-attach | Logs: just dev-logs'
-    just dev-logs
 
 # Stop background dev server
 dev-down:
