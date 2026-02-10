@@ -16,7 +16,7 @@ dev-up:
 
 # Stop background dev server
 dev-down:
-    tmux kill-session -t git-proxy
+    tmux kill-session -t git-proxy 2>/dev/null || true
 
 # Attach to background dev server (detach: Ctrl+B d)
 dev-attach:
